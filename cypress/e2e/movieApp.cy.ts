@@ -2,9 +2,12 @@ import { IMovie } from '@/ts/models/Movie';
 import { moviesMock } from '@/ts/__mocks__/moviesMock';
 
 const API_URL = 'http://omdbapi.com/?apikey=416ed51a&s=';
+const BASE_URL = 'http://localhost:5173';
 let searchText: string;
 let sortedAscendingMovies: string[];
 let sortedDescendingMovies: string[];
+let movies: IMovie[];
+let alias: string;
 
 const interceptMovies = (statusCode = 200, body = { Search: moviesMock }) => {
   cy.intercept(`${API_URL}${searchText}`, { statusCode, body }).as(
@@ -15,7 +18,10 @@ const interceptMovies = (statusCode = 200, body = { Search: moviesMock }) => {
 const searchForMovies = () => {
   cy.get('input#searchText').type(searchText);
   cy.get('form#searchForm').submit();
-  cy.wait('@fetchMovies');
+};
+
+const waitForAlias = (alias: string) => {
+  cy.wait(alias);
 };
 
 const shouldDisplayErrorMessage = () => {
@@ -25,15 +31,13 @@ const shouldDisplayErrorMessage = () => {
     .and('have.text', 'Inga sökresultat att visa');
 };
 
-const headingElementsShouldHaveCorrectTextContent = (movies: IMovie[]) => {
+const headingElementsShouldHaveCorrectText = (movies: IMovie[]) => {
   cy.get('div#movie-container > div.movie').each((movieElement, index) => {
-    cy.wrap(movieElement)
-      .find('h3')
-      .should('have.text', moviesMock[index].Title);
+    cy.wrap(movieElement).find('h3').should('have.text', movies[index].Title);
   });
 };
 
-const imageElementsAttributesShouldBeFromMovies = (movies: IMovie[]) => {
+const imageElementCorrectAttributes = (movies: IMovie[]) => {
   cy.get('div#movie-container > div.movie').each((movieElement, index) => {
     cy.wrap(movieElement)
       .find('img')
@@ -44,24 +48,32 @@ const imageElementsAttributesShouldBeFromMovies = (movies: IMovie[]) => {
 
 describe('#Movie App - Real', () => {
   beforeEach(() => {
-    cy.visit('http://localhost:5173');
+    cy.visit(BASE_URL);
     searchText = 'Sagan om Ringen';
   });
 
-  it('if search text is Sagan om Ringen it should return correct statuscode and body attributes', () => {
-    cy.request('GET', `${API_URL}${searchText}`).should((response) => {
+  it('based on non-empty user input show movies', () => {
+    cy.request('GET', `${API_URL}${searchText}`).then((response) => {
+      movies = response.body.Search;
       const firstMovie = response.body.Search[0];
       expect(response.status).to.equal(200);
       expect(response.body.Search).length(1);
       expect(firstMovie.Title).to.equal('Sagan om ringen');
       // Testar första egenskapen vet inte om det är nödvändigt att testa alla
       expect(firstMovie).to.have.property('Year').that.is.a('string');
+      searchForMovies();
+      headingElementsShouldHaveCorrectText(movies);
+      imageElementCorrectAttributes(movies);
+      cy.get('div#movie-container > div.movie').should(
+        'have.length',
+        movies.length
+      );
     });
   });
 
   it('if input is empty it should respond with error', () => {
     searchText = '';
-    cy.request('GET', `${API_URL}${searchText}`).should((response) => {
+    cy.request('GET', `${API_URL}${searchText}`).then((response) => {
       expect(response.body.Search).undefined;
       expect(response.body).to.not.have.property('Search');
       expect(response.body.Response).to.equal('False');
@@ -70,10 +82,12 @@ describe('#Movie App - Real', () => {
 
   it('if input does not represent any movies respond with error', () => {
     searchText = 'dwqdwq';
-    cy.request('GET', `${API_URL}${searchText}`).should((response) => {
+    cy.request('GET', `${API_URL}${searchText}`).then((response) => {
       expect(response.body.Search).undefined;
       expect(response.body).to.not.have.property('Search');
       expect(response.body.Response).to.equal('False');
+      searchForMovies();
+      shouldDisplayErrorMessage();
     });
   });
 });
@@ -83,46 +97,49 @@ describe('#Movie App - Mocks', () => {
     sortedAscendingMovies = ['Alien', 'Batman', 'Batman', 'Cabin Fever'];
     sortedDescendingMovies = ['Cabin Fever', 'Batman', 'Batman', 'Alien'];
     searchText = 'Batman';
+    alias = '@fetchMovies';
     cy.visit('http://localhost:5173');
   });
 
   it('if response is ok and user have text in input it should display movies from the mock', () => {
     interceptMovies();
     searchForMovies();
+    waitForAlias(alias);
 
     cy.get('div#movie-container > div.movie').should(
       'have.length',
       moviesMock.length
     );
 
-    headingElementsShouldHaveCorrectTextContent(moviesMock);
-    imageElementsAttributesShouldBeFromMovies(moviesMock);
+    headingElementsShouldHaveCorrectText(moviesMock);
+    imageElementCorrectAttributes(moviesMock);
   });
 
-  it('when response is not ok, user should see an error message', () => {
+  it('when response is server error, user should see an error message', () => {
     interceptMovies(500);
     searchForMovies();
+    waitForAlias(alias);
     shouldDisplayErrorMessage();
   });
 
-  it('when the movies array are empty, user should see an error message', () => {
+  it('for empty movies array, display error message', () => {
     interceptMovies(200, { Search: [] });
     searchForMovies();
+    waitForAlias(alias);
     shouldDisplayErrorMessage();
   });
 
   it('checks if the url contains searchText when form is submitted', () => {
     interceptMovies();
+    searchForMovies();
 
-    cy.get('input#searchText').type(searchText);
-    cy.get('form#searchForm').submit();
-
-    cy.wait('@fetchMovies').its('request.url').should('contain', searchText);
+    cy.wait(alias).its('request.url').should('contain', searchText);
   });
 
-  it('should have movies sorted based on clicking on ascending or descending buttons', () => {
+  it('should sort movies either descending or ascending', () => {
     interceptMovies();
     searchForMovies();
+    waitForAlias(alias);
 
     cy.get('button#sortAscButton').click();
 
