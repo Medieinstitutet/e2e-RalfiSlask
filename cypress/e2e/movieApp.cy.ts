@@ -79,5 +79,38 @@ describe('#Movie App', () => {
         .should('have.attr', 'src', moviesMock[index].Poster)
         .and('attr', 'alt', moviesMock[index].Title);
     });
+
+    it('when response is not ok, user should see an error message', () => {
+      cy.intercept(`http://omdbapi.com/?apikey=416ed51a&s=${searchText}`, {
+        body: { Search: moviesMock },
+        statusCode: 500,
+      }).as('fetchMovies');
+
+      cy.get('input#searchText').type(searchText);
+      cy.get('form#searchForm').submit();
+
+      cy.wait('@fetchMovies');
+
+      cy.get('div#movie-container > div.movie').should('have.length', 0);
+      cy.get('div#movie-container > p')
+        .should('have.length', 1)
+        .and('have.text', 'Inga sökresultat att visa');
+    });
+
+    it('when the movies array are empty, user should see an error message', () => {
+      cy.intercept(`http://omdbapi.com/?apikey=416ed51a&s=${searchText}`, {
+        body: { Search: [] },
+      }).as('fetchMovies');
+
+      cy.get('input#searchText').type(searchText);
+      cy.get('form#searchForm').submit();
+
+      cy.wait('@fetchMovies');
+
+      cy.get('div#movie-container > div.movie').should('have.length', 0);
+      cy.get('div#movie-container > p')
+        .should('have.length', 1)
+        .and('have.text', 'Inga sökresultat att visa');
+    });
   });
 });
