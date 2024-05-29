@@ -1,14 +1,8 @@
-interface IMovie {
-  Title: string;
-  imdbID: string;
-  Type: string;
-  Poster: string;
-  Year: string;
-}
+import { IMovie } from '@/ts/models/Movie';
+import { moviesMock } from '@/ts/__mocks__/moviesMock';
 
 const API_URL = 'http://omdbapi.com/?apikey=416ed51a&s=';
 let searchText: string;
-let moviesMock: IMovie[];
 let sortedAscendingMovies: string[];
 let sortedDescendingMovies: string[];
 
@@ -86,38 +80,6 @@ describe('#Movie App - Real', () => {
 
 describe('#Movie App - Mocks', () => {
   beforeEach(() => {
-    moviesMock = [
-      {
-        Title: 'Alien',
-        imdbID: '1',
-        Type: 'horror',
-        Poster: '/image1.webp',
-        Year: '1988',
-      },
-      {
-        Title: 'Batman',
-        imdbID: '2',
-        Type: 'action',
-        Poster: '/image2.webp',
-        Year: '1988',
-      },
-
-      {
-        Title: 'Cabin Fever',
-        imdbID: '3',
-        Type: 'horror',
-        Poster: '/image3.webp',
-        Year: '2000',
-      },
-      {
-        Title: 'Batman',
-        imdbID: '4',
-        Type: 'action',
-        Poster: '/image4.webp',
-        Year: '1988',
-      },
-    ];
-
     sortedAscendingMovies = ['Alien', 'Batman', 'Batman', 'Cabin Fever'];
     sortedDescendingMovies = ['Cabin Fever', 'Batman', 'Batman', 'Alien'];
     searchText = 'Batman';
