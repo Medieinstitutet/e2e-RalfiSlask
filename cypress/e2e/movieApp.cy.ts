@@ -23,7 +23,7 @@ describe('#Movie App', () => {
         Title: 'Batman',
         imdbID: '2',
         Type: 'action',
-        Poster: '/image1.webp',
+        Poster: '/image2.webp',
         Year: '1988',
       },
 
@@ -31,20 +31,19 @@ describe('#Movie App', () => {
         Title: 'Cabin Fever',
         imdbID: '3',
         Type: 'horror',
-        Poster: '/image2.webp',
+        Poster: '/image3.webp',
         Year: '2000',
       },
       {
         Title: 'Batman',
         imdbID: '4',
         Type: 'action',
-        Poster: '/image1.webp',
+        Poster: '/image4.webp',
         Year: '1988',
       },
     ];
 
     searchText = 'Batman';
-
     cy.visit('http://localhost:5173');
   });
 
@@ -52,12 +51,11 @@ describe('#Movie App', () => {
     cy.visit('http://localhost:5173');
   });
 
-  it('should find url', () => {
+  it('if response is ok and user have text in input it should display movies', () => {
     cy.intercept(`http://omdbapi.com/?apikey=416ed51a&s=${searchText}`, {
       body: { Search: moviesMock },
+      statusCode: 200,
     }).as('fetchMovies');
-
-    cy.visit('http://localhost:5173');
 
     cy.get('input#searchText').type(searchText);
     cy.get('form#searchForm').submit();
@@ -68,5 +66,18 @@ describe('#Movie App', () => {
       'have.length',
       moviesMock.length
     );
+
+    cy.get('div#movie-container > div.movie').each((movieElement, index) => {
+      cy.wrap(movieElement)
+        .find('h3')
+        .should('have.text', moviesMock[index].Title);
+    });
+
+    cy.get('div#movie-container > div.movie').each((movieElement, index) => {
+      cy.wrap(movieElement)
+        .find('img')
+        .should('have.attr', 'src', moviesMock[index].Poster)
+        .and('attr', 'alt', moviesMock[index].Title);
+    });
   });
 });
