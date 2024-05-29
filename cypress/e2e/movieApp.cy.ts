@@ -112,5 +112,16 @@ describe('#Movie App', () => {
         .should('have.length', 1)
         .and('have.text', 'Inga sökresultat att visa');
     });
+
+    it('checks if the url contains searchText when form is submitted', () => {
+      cy.intercept(`http://omdbapi.com/?apikey=416ed51a&s=${searchText}`, {
+        body: { Search: moviesMock },
+      }).as('fetchMovies');
+
+      cy.get('input#searchText').type(searchText);
+      cy.get('form#searchForm').submit();
+
+      cy.wait('@fetchMovies').its('request.url').should('contain', searchText);
+    });
   });
 });
