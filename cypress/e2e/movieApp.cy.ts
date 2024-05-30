@@ -46,6 +46,12 @@ const imageElementCorrectAttributes = (movies: IMovie[]) => {
   });
 };
 
+const apiResponseFalse = (response: Cypress.Response<any>) => {
+  expect(response.body.Search).undefined;
+  expect(response.body).to.not.have.property('Search');
+  expect(response.body.Response).to.equal('False');
+};
+
 describe('#Movie App - Real', () => {
   beforeEach(() => {
     cy.visit(BASE_URL);
@@ -74,18 +80,18 @@ describe('#Movie App - Real', () => {
   it('if input is empty it should respond with error', () => {
     searchText = '';
     cy.request('GET', `${API_URL}${searchText}`).then((response) => {
-      expect(response.body.Search).undefined;
-      expect(response.body).to.not.have.property('Search');
-      expect(response.body.Response).to.equal('False');
+      apiResponseFalse(response);
+      expect(response.body.Error).to.equal('Incorrect IMDb ID.');
+      cy.get('form#searchForm').submit();
+      shouldDisplayErrorMessage();
     });
   });
 
   it('if input does not represent any movies respond with error', () => {
     searchText = 'dwqdwq';
     cy.request('GET', `${API_URL}${searchText}`).then((response) => {
-      expect(response.body.Search).undefined;
-      expect(response.body).to.not.have.property('Search');
-      expect(response.body.Response).to.equal('False');
+      apiResponseFalse(response);
+      expect(response.body.Error).to.equal('Movie not found!');
       searchForMovies();
       shouldDisplayErrorMessage();
     });
@@ -129,10 +135,17 @@ describe('#Movie App - Mocks', () => {
     shouldDisplayErrorMessage();
   });
 
+  it('with empty input, display error message', () => {
+    searchText = '';
+    interceptMovies(200, { Search: [] });
+    cy.get('form#searchForm').submit();
+    waitForAlias(alias);
+    shouldDisplayErrorMessage();
+  });
+
   it('checks if the url contains searchText when form is submitted', () => {
     interceptMovies();
     searchForMovies();
-
     cy.wait(alias).its('request.url').should('contain', searchText);
   });
 
@@ -140,7 +153,6 @@ describe('#Movie App - Mocks', () => {
     interceptMovies();
     searchForMovies();
     waitForAlias(alias);
-
     cy.get('button#sortAscButton').click();
 
     /**
